@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Sol, Mi Cielo, Mi Vida — Feliz día</title>
+<meta name="description" content="Para el sol que ilumina mis días: una carta entre flores amarillas. Te amo, mi vida, con la fuerza de mil soles.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Caveat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<!--
+════════════════════════════════════════════════════════════
+PLAN DE CONSTRUCCIÓN (revisión previa al código)
+────────────────────────────────────────────────────────────
+PALETA CON ROL FUNCIONAL
+  #fafafa  papel y respiro · base de la tarjeta + espacio negativo
+  #ffe597  luz ambiental · lavados radiales de fondo
+  #ffe4a6  capa media · transición entre luz y pétalo
+  #f6da93  protagonista · pétalo principal
+  #dabb59  anclaje · centros, líneas finas, detalle
+  #5f4a1c  tinta · dorado oscuro derivado de la familia, texto lectura
+  (suave #6a5522 / fina #77622f, misma familia, para contraste AA)
+
+ESCALA TIPOGRÁFICA REAL
+  titular      Cormorant italic 500 · clamp(2.9rem,7.4vw,4.6rem) · lh .98 · ls -.015em
+  subtítulo    Cormorant italic 400 · clamp(1.08rem,2.6vw,1.28rem) · lh 1.45
+  cuerpo carta Cormorant 500      · 1.19rem · lh 1.75
+  firma        Cormorant italic 600 · 1.32rem · lh 1.4
+  mano/fecha   Caveat 500 · 1.45–1.8rem · lh 1
+  funcional    Inter 300 · .78–.8rem · lh 1.6 (solo pie + botón)
+
+WIREFRAME CONFIRMADO
+  corona desbordante (top, recorte real) → tallo bezier central en S
+  → atraviesa titular→carta → se enlaza en esquina sup. de la carta
+  → laterales + inferior llenos con desborde · único respiro: la tarjeta.
+
+CHECK ANTI-PATRONES
+  [x] sin eyebrow labels en mayúsculas/tracking (fecha = manuscrito ilustrado)
+  [x] sin grid/fila pareja (racimos Poisson, escala .4–1.3, rotación libre)
+  [x] sin flores planas (3 capas + sombra marrón distinta por capa, no gris)
+  [x] sin copy de landing (tono carta, abierto: pareja/amistad/familia)
+  [x] sin huecos (nube como tejido conector + solape de pétalos + slice-crop)
+════════════════════════════════════════════════════════════
+-->
+<style>
+:root{
+  --papel:#fafafa;
+  --luz:#ffe597;
+  --capa-media:#ffe4a6;
+  --petalo:#f6da93;
+  --anclaje:#dabb59;
+  --tinta:#5f4a1c;
+  --tinta-suave:#5f4a1c;
+  --tinta-media:#6a5522;
+  --tinta-fina:#6f5d2c;
+  --linea:rgba(218,187,89,.45);
+  /* nuevas: amarillo vivo + naranja cempasúchil + verde oliva de herbario */
+  --vivo:#f9c93c;
+  --naranja:#d97e1e;
+  --verde:#6d7a3f;
+  --verde-oscuro:#4a5428;
+  --verde-claro:#9aa65e;
+  --verde-tinta:#3f4722;
+  --sombra-frente:0 6px 10px rgba(95,74,28,.30);
+  --sombra-media:0 10px 18px rgba(95,74,28,.16);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+html,body{overflow-x:clip;max-width:100%}
+body{
+  background:var(--papel);color:var(--tinta);
+  font-family:"Cormorant Garamond",Georgia,serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  position:relative;
+}
+::selection{background:rgba(255,229,151,.8)}
+*:focus-visible{outline:2.5px solid var(--tinta);outline-offset:3px;border-radius:6px}
+svg{max-width:100%}
+button{font-family:inherit}
+
+/* ——— luz ambiental: lavados de acuarela dorada ——— */
+.wash{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.wash::before{content:"";position:absolute;inset:-6%;
+  background:
+    radial-gradient(56% 36% at 20% 8%, rgba(255,229,151,.9), transparent 68%),
+    radial-gradient(52% 40% at 82% 12%, rgba(255,228,166,.8), transparent 70%),
+    radial-gradient(72% 50% at 50% 92%, rgba(246,218,147,.55), transparent 72%),
+    radial-gradient(36% 26% at 68% 52%, rgba(218,187,89,.13), transparent 70%),
+    radial-gradient(46% 30% at 50% 100%, rgba(109,122,63,.10), transparent 70%);
+}
+.wash::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(218,187,89,.12) 100%)}
+.grain{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.6}
+
+/* ——— escena: contiene todo y recorta los desbordes sin scroll ——— */
+.escena{position:relative;overflow:clip;min-height:100vh;z-index:0}
+
+/* ——— CORONA SUPERIOR desbordante ——— */
+.corona{position:absolute;top:-26px;left:0;right:0;height:clamp(210px,30vw,310px);z-index:1;pointer-events:none;overflow:hidden;will-change:transform}
+.corona svg{width:100%;height:100%;display:block}
+.corona-fondo{filter:blur(5px);opacity:.42}
+/* sin drop-shadow en capas animadas: la sombra se hornea como elipse estática (0 coste por fotograma) */
+.corona-frente{filter:none}
+.sombra-contacto{fill:rgba(95,74,28,.10)}
+
+/* ——— BORDES LATERALES llenos (velo interior estático, sin corte recto ni máscara) ——— */
+.borde-lat{position:absolute;top:0;bottom:0;width:clamp(96px,14vw,184px);z-index:1;pointer-events:none;overflow:hidden;will-change:transform}
+.borde-lat.izq{left:-8px}
+.borde-lat.der{right:-8px}
+.borde-lat svg{width:100%;height:100%;display:block}
+.lat-fondo{filter:blur(5px);opacity:.38}
+.lat-frente{filter:none}
+.lat-media{filter:drop-shadow(0 10px 18px rgba(95,74,28,.16))}
+/* ——— ENREDADERA CENTRAL en S (nace de la corona → carta) ——— */
+.liana{position:absolute;left:50%;transform:translateX(-46%);top:190px;width:min(560px,88vw);height:640px;z-index:0;pointer-events:none;overflow:visible;opacity:.92}
+.liana svg{width:100%;height:100%;display:block;overflow:visible}
+
+/* ——— página / contenido ——— */
+.page{position:relative;z-index:2;max-width:760px;margin:0 auto;padding:240px 96px 84px}
+/* cuerpo del ramo: halo cálido que une titular y carta en una sola silueta */
+.page::before{content:"";position:absolute;z-index:0;left:50%;transform:translateX(-50%);top:200px;bottom:60px;width:min(680px,96vw);pointer-events:none;
+  background:radial-gradient(46% 30% at 50% 12%, rgba(255,229,151,.5), transparent 70%),
+             radial-gradient(52% 46% at 50% 52%, rgba(255,228,166,.34), transparent 70%),
+             radial-gradient(60% 30% at 50% 88%, rgba(246,218,147,.4), transparent 70%)}
+/* núcleo de lectura: halo de papel que separa el texto de las flores */
+.nucleo{position:relative;z-index:2;background:radial-gradient(62% 82% at 50% 42%, rgba(250,250,250,.94) 0%, rgba(250,250,250,.78) 56%, rgba(250,250,250,0) 78%);padding:18px 18px 22px;border-radius:24px}
+@media(max-width:640px){.page{padding:200px 22px 64px}.nucleo{padding:12px 6px 16px}}
+
+/* fecha ilustrada: manuscrito junto al ramillete, nunca chip */
+.fecha-scene{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin:6px 0 8px;transform:rotate(-1.2deg)}
+.fecha-mano{font-family:"Caveat",cursive;font-weight:500;font-size:1.8rem;line-height:1;color:var(--tinta);transform:rotate(-4deg) translateY(-10px)}
+.fecha-mano small{display:block;font-size:1.08rem;font-weight:400;color:var(--tinta-media);transform:rotate(1deg);margin-top:2px}
+.fecha-mano::after{content:"";display:block;height:10px;margin-top:3px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='10' viewBox='0 0 150 10'%3E%3Cpath d='M2 7 C 32 2, 74 2, 148 6' fill='none' stroke='%23dabb59' stroke-width='1.4' stroke-linecap='round' opacity='.75'/%3E%3C/svg%3E") no-repeat left center / 150px 10px}
+
+h1{text-align:center;font-style:italic;font-weight:500;font-size:clamp(2.5rem,6.4vw,3.9rem);line-height:1.02;letter-spacing:-.015em;text-wrap:balance;margin:0 0 12px}
+h1 .luz{position:relative}
+h1 .luz::after{content:"";position:absolute;left:-2%;right:-2%;bottom:.06em;height:.32em;z-index:-1;border-radius:50%;
+  background:linear-gradient(90deg,rgba(255,229,151,0),rgba(255,229,151,.92),rgba(255,228,166,0))}
+.sub{text-align:center;font-style:italic;font-weight:400;font-size:clamp(1.08rem,2.6vw,1.28rem);line-height:1.45;color:var(--tinta-media);max-width:34em;margin:0 auto;text-wrap:pretty}
+.sub strong{font-weight:600;color:var(--tinta)}
+.rule{display:flex;align-items:center;justify-content:center;gap:12px;margin:20px auto 6px;color:var(--anclaje);font-size:1.05rem}
+.rule::before,.rule::after{content:"";height:1px;width:min(120px,20vw);background:var(--linea)}
+
+/* balanceo botánico fluido: rotación + deriva vertical, cada capa con su tempo */
+@keyframes swayA{0%,100%{transform:rotate(-1.4deg) translateY(0)}30%{transform:rotate(-.4deg) translateY(-2px)}50%{transform:rotate(1.3deg) translateY(-4px)}70%{transform:rotate(.5deg) translateY(-2px)}}
+@keyframes swayB{0%,100%{transform:rotate(1.2deg) translateY(0)}30%{transform:rotate(.4deg) translateY(-3px)}50%{transform:rotate(-1.4deg) translateY(-6px)}70%{transform:rotate(-.5deg) translateY(-3px)}}
+@keyframes swayC{0%,100%{transform:rotate(-1deg) translateY(-1px)}50%{transform:rotate(1.1deg) translateY(-5px)}}
+.sway-a{animation:swayA 7.2s cubic-bezier(.45,.05,.35,1) infinite;transform-origin:50% 90%;transform-box:fill-box;will-change:transform}
+.sway-b{animation:swayB 8.8s cubic-bezier(.45,.05,.35,1) infinite;transform-origin:50% 92%;transform-box:fill-box;will-change:transform}
+.sway-c{animation:swayC 6s cubic-bezier(.45,.05,.35,1) infinite reverse;transform-origin:50% 88%;transform-box:fill-box;will-change:transform}
+/* las capas de fondo respiran más lento y con menos amplitud */
+.corona-fondo .sway-a,.corona-fondo .sway-b,.lat-fondo .sway-a,.lat-fondo .sway-b{animation-duration:11s}
+/* micro-movimiento para guirnaldas colgantes y rellenos: casi imperceptible, baratísimo */
+@keyframes swaySoft{0%,100%{transform:rotate(-.5deg)}50%{transform:rotate(.5deg) translateY(-2px)}}
+.sway-soft{animation:swaySoft 10s cubic-bezier(.45,.05,.35,1) infinite;transform-origin:50% 90%;transform-box:fill-box;will-change:transform}
+/* entrada suave (una sola vez) */
+@keyframes entrar{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.nucleo{animation:entrar .9s cubic-bezier(.2,.7,.3,1) both}
+.carta-zone{animation:entrar .9s cubic-bezier(.2,.7,.3,1) .15s both}
+.nota{animation:entrar .9s cubic-bezier(.2,.7,.3,1) .3s both}
+.anot{font-family:"Caveat",cursive;font-size:1.06rem;fill:var(--tinta-media)}
+
+/* ——— carta ——— */
+.carta-zone{position:relative;margin:40px auto 34px;max-width:600px;padding:0 8px;z-index:2}
+@media(max-width:640px){.carta-zone{margin-top:32px}}
+/* abrazo de fresias: fondo que desborda la carta hacia todos los lados */
+.abrazo-fresia{position:absolute;inset:-150px -170px -90px;z-index:0;pointer-events:none;overflow:visible}
+.abrazo-fresia svg{width:100%;height:100%;display:block;overflow:visible}
+.abrazo-fondo{filter:blur(5px);opacity:.4}
+.abrazo-frente{filter:none}
+.abrazo-media{filter:drop-shadow(0 10px 18px rgba(95,74,28,.16))}
+@media(max-width:640px){.abrazo-fresia{inset:-84px -62px -58px}}
+.carta{position:relative;z-index:1;background:linear-gradient(180deg,#fffdf6 0%,#fef9ea 55%,#fdf4d9 100%);
+  border:1px solid var(--linea);
+  border-radius:22px 6px 26px 8px / 8px 26px 7px 24px;
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 18px 40px rgba(95,74,28,.14),0 3px 10px rgba(95,74,28,.10);
+  padding:34px 32px 22px;transform:rotate(-.5deg)}
+.carta::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:.55;
+  background:repeating-linear-gradient(0deg,transparent 0 27px,rgba(218,187,89,.08) 27px 28px)}
+.carta::after{content:"";position:absolute;top:-1px;right:-1px;width:48px;height:48px;
+  background:linear-gradient(225deg,var(--papel) 0 49%,rgba(218,187,89,.4) 49% 51%,#fff8e2 51% 100%);
+  border-radius:0 6px 0 12px;box-shadow:-3px 3px 8px rgba(95,74,28,.16);clip-path:polygon(0 0,100% 0,100% 100%)}
+.prensada{position:absolute;top:16px;right:54px;width:76px;height:76px;transform:rotate(12deg);z-index:2;filter:drop-shadow(0 4px 6px rgba(95,74,28,.24))}
+.cinta{position:absolute;top:8px;right:44px;width:94px;height:22px;background:rgba(255,228,166,.72);border:1px solid rgba(218,187,89,.35);transform:rotate(-8deg);opacity:.88}
+/* REEMPLAZO POSTERIOR — slot habitado de la carta:
+   Para personalizar, sustituir el innerHTML de #letterSlot.
+   Empieza como carta real ("Mi Caramelito,") para que nunca se vea vacío. */
+#letterSlot{position:relative;font-size:1.19rem;line-height:1.75;font-weight:500;color:var(--tinta);outline:none;min-height:300px;caret-color:var(--anclaje)}
+#letterSlot p{margin:0 0 .7em}
+#letterSlot .firma{font-style:italic;font-weight:600;font-size:1.32rem;line-height:1.4;margin-top:.4em}
+#letterSlot:focus{box-shadow:0 0 0 2px rgba(218,187,89,.35);border-radius:8px}
+
+.nota{position:relative;z-index:2;max-width:36em;margin:46px auto 0;text-align:center;font-size:1.08rem;line-height:1.6;font-style:italic;color:var(--tinta-media);text-wrap:pretty;
+  background:radial-gradient(70% 90% at 50% 50%, rgba(250,250,250,.9) 0%, rgba(250,250,250,.6) 60%, rgba(250,250,250,0) 80%);padding:14px 18px;border-radius:18px}
+.nota .verso{font-size:.99rem;color:var(--tinta-fina)}
+
+.petalo-caido{position:fixed;top:-4vh;z-index:40;pointer-events:none;animation:caer linear infinite;will-change:transform,opacity}
+@keyframes caer{
+  0%{transform:translate3d(0,-4vh,0) rotate(0deg);opacity:0}
+  8%{opacity:.85}
+  50%{transform:translate3d(var(--dx,2vw),52vh,0) rotate(170deg)}
+  92%{opacity:.7}
+  100%{transform:translate3d(calc(var(--dx,2vw) * -0.6),108vh,0) rotate(330deg);opacity:0}
+}
+
+@media(max-width:640px){
+  /* en móvil las columnas recortarían todo a una rendija: se ocultan y la carta respira */
+  .borde-lat{display:none}
+  .fecha-mano{font-size:1.45rem}
+  h1{font-size:clamp(2.4rem,11vw,3rem)}
+  h1 .luz{white-space:normal}
+  .carta{padding:26px 20px 18px}
+  #letterSlot{font-size:1.09rem}
+  .liana{top:170px;height:560px;opacity:.85}
+  .liana .anot{display:none}
+}
+@media (prefers-reduced-motion: reduce){
+  .sway-a,.sway-b,.sway-c,.sway-soft,.petalo-caido{animation:none !important}
+  .nucleo,.carta-zone,.nota{animation:none !important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ defs: acuarela dorada + crisantemo y cempasúchil (SVG propio, fotos como referencia) ══ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<radialGradient id="petalGrad" cx="42%" cy="38%" r="72%">
+<stop offset="0%" stop-color="#fff8e2"/><stop offset="38%" stop-color="#ffe4a6"/><stop offset="72%" stop-color="#f6da93"/><stop offset="100%" stop-color="#dabb59"/>
+</radialGradient>
+<radialGradient id="petalSoft" cx="50%" cy="42%" r="70%">
+<stop offset="0%" stop-color="#ffffff" stop-opacity=".9"/><stop offset="45%" stop-color="#ffe597"/><stop offset="100%" stop-color="#f6da93"/>
+</radialGradient>
+<radialGradient id="centerGrad" cx="42%" cy="38%" r="75%">
+<stop offset="0%" stop-color="#f6da93"/><stop offset="55%" stop-color="#dabb59"/><stop offset="100%" stop-color="#5f4a1c"/>
+</radialGradient>
+<radialGradient id="rosaGrad" cx="45%" cy="40%" r="78%">
+<stop offset="0%" stop-color="#fff3c8"/><stop offset="48%" stop-color="#ffe4a6"/><stop offset="82%" stop-color="#f6da93"/><stop offset="100%" stop-color="#dabb59"/>
+</radialGradient>
+<linearGradient id="talloGrad" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#dabb59"/><stop offset="100%" stop-color="#5f4a1c"/>
+</linearGradient>
+<linearGradient id="verdeTallo" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#9aa65e"/><stop offset="100%" stop-color="#4a5428"/>
+</linearGradient>
+<radialGradient id="crisiGrad" cx="46%" cy="40%" r="75%">
+<stop offset="0%" stop-color="#fff8d2"/><stop offset="42%" stop-color="#ffe066"/><stop offset="78%" stop-color="#f9bf2e"/><stop offset="100%" stop-color="#cf8a1d"/>
+</radialGradient>
+<radialGradient id="cempaGrad" cx="45%" cy="40%" r="78%">
+<stop offset="0%" stop-color="#fff6c9"/><stop offset="45%" stop-color="#ffd34d"/><stop offset="80%" stop-color="#f0a92a"/><stop offset="100%" stop-color="#c97a15"/>
+</radialGradient>
+<radialGradient id="cempaNar" cx="45%" cy="40%" r="78%">
+<stop offset="0%" stop-color="#ffedb0"/><stop offset="45%" stop-color="#f6a723"/><stop offset="80%" stop-color="#dd7d18"/><stop offset="100%" stop-color="#a84f0e"/>
+</radialGradient>
+<radialGradient id="fresiaGrad" cx="46%" cy="38%" r="78%">
+<stop offset="0%" stop-color="#fff9d2"/><stop offset="40%" stop-color="#ffe45e"/><stop offset="75%" stop-color="#f9bf2e"/><stop offset="100%" stop-color="#e8931f"/>
+</radialGradient>
+<radialGradient id="fresiaGarganta" cx="50%" cy="40%" r="70%">
+<stop offset="0%" stop-color="#f6a723"/><stop offset="100%" stop-color="#c96a12"/>
+</radialGradient>
+<radialGradient id="centroVerde" cx="42%" cy="38%" r="75%">
+<stop offset="0%" stop-color="#a7b25e"/><stop offset="55%" stop-color="#6d7a3f"/><stop offset="100%" stop-color="#3f4722"/>
+</radialGradient>
+<linearGradient id="verdeGrad" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#8b9a55"/><stop offset="100%" stop-color="#4a5428"/>
+</linearGradient>
+<filter id="acuarela" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/></filter>
+<filter id="ruff" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/></filter>
+
+<!-- 1 · GIRASOL -->
+<g id="s-girasol">
+<g fill="url(#petalGrad)" stroke="#a68b3a" stroke-width=".8">
+<ellipse rx="12" ry="36"/><ellipse rx="12" ry="36" transform="rotate(30)"/><ellipse rx="12" ry="36" transform="rotate(60)"/><ellipse rx="12" ry="36" transform="rotate(90)"/><ellipse rx="12" ry="36" transform="rotate(120)"/><ellipse rx="12" ry="36" transform="rotate(150)"/>
+</g>
+<g fill="#ffe4a6" stroke="#a68b3a" stroke-width=".55" opacity=".95">
+<ellipse rx="9" ry="24" transform="rotate(15)"/><ellipse rx="9" ry="24" transform="rotate(75)"/><ellipse rx="9" ry="24" transform="rotate(135)"/>
+</g>
+<circle r="20" fill="url(#centerGrad)"/>
+<g fill="#5f4a1c" opacity=".8"><circle cx="-7" cy="-5" r="1.5"/><circle cx="4" cy="-9" r="1.3"/><circle cx="9" cy="2" r="1.5"/><circle cx="-2" cy="7" r="1.4"/><circle cx="-11" cy="3" r="1.2"/></g>
+<ellipse cx="-6" cy="-8" rx="7" ry="4.4" fill="#ffe597" opacity=".5"/>
+</g>
+<!-- 2 · ROSA -->
+<g id="s-rosa">
+<g filter="url(#acuarela)">
+<ellipse rx="32" ry="28" fill="url(#rosaGrad)" stroke="#a68b3a" stroke-width="1"/>
+<path d="M-21 -7 C -11 -19, 8 -21, 19 -9 C 27 0, 19 15, 4 19 C -11 23, -27 11, -21 -7Z" fill="none" stroke="#8a6f2e" stroke-width="1.1" opacity=".8"/>
+<path d="M-11 -4 C -4 -11, 9 -11, 13 -2 C 15 6, 6 11, -4 9 C -11 7, -15 2, -11 -4Z" fill="#ffe4a6" stroke="#a68b3a" stroke-width=".9" opacity=".96"/>
+<path d="M-4 0 C 0 -4, 7 -4, 8 1 C 8 5, 3 8, -2 7 C -6 6, -7 3, -4 0Z" fill="#dabb59" opacity=".9"/>
+</g>
+</g>
+<!-- 3 · GERBERA -->
+<g id="s-gerbera">
+<g fill="url(#petalGrad)" stroke="#a68b3a" stroke-width=".7">
+<ellipse rx="6" ry="31"/><ellipse rx="6" ry="31" transform="rotate(24)"/><ellipse rx="6" ry="31" transform="rotate(48)"/><ellipse rx="6" ry="31" transform="rotate(72)"/><ellipse rx="6" ry="31" transform="rotate(96)"/><ellipse rx="6" ry="31" transform="rotate(120)"/><ellipse rx="6" ry="31" transform="rotate(144)"/><ellipse rx="6" ry="31" transform="rotate(168)"/>
+</g><circle r="11" fill="url(#centerGrad)"/><circle r="3.4" cx="-2.5" cy="-2.5" fill="#ffe597" opacity=".85"/>
+</g>
+<!-- 4 · LIRIO -->
+<g id="s-lirio">
+<g fill="url(#petalSoft)" stroke="#a68b3a" stroke-width="1" filter="url(#acuarela)">
+<path d="M0 -6 C -22 -18, -34 -42, -32 -66 C -14 -54, 0 -32, 6 -10Z"/>
+<path d="M6 -10 C 12 -32, 26 -52, 46 -60 C 44 -36, 30 -14, 6 -10Z"/>
+<path d="M0 0 C -20 6, -30 24, -28 46 C -12 36, 0 20, 0 0Z"/>
+<path d="M2 0 C 14 8, 24 24, 24 44 C 10 36, 0 20, 2 0Z"/>
+</g>
+<circle cx="3" cy="-8" r="4.4" fill="url(#centerGrad)"/>
+</g>
+<!-- 5 · PETUNIA -->
+<g id="s-petunia">
+<path d="M0 -26 C 10 -16, 22 -12, 26 0 C 16 6, 10 14, 8 26 C 2 16, -2 16, -8 26 C -10 14, -16 6, -26 0 C -22 -12, -10 -16, 0 -26Z" fill="url(#petalSoft)" stroke="#a68b3a" stroke-width="1" filter="url(#acuarela)"/>
+<circle r="5.6" fill="#dabb59"/><circle r="2.4" fill="#5f4a1c"/>
+</g>
+<!-- 6 · MARGARITA -->
+<g id="s-margarita">
+<g fill="#fffdf4" stroke="#b89a3e" stroke-width=".9">
+<ellipse rx="7" ry="25"/><ellipse rx="7" ry="25" transform="rotate(36)"/><ellipse rx="7" ry="25" transform="rotate(72)"/><ellipse rx="7" ry="25" transform="rotate(108)"/><ellipse rx="7" ry="25" transform="rotate(144)"/>
+</g><circle r="10.5" fill="url(#centerGrad)"/>
+</g>
+<!-- 7 · NUBE (tejido conector) -->
+<g id="s-nube">
+<g stroke="#c2a04a" stroke-width=".9" opacity=".7" fill="none"><path d="M0 0 L-8 18 M7 -2 L12 16 M-4 -4 L-14 10"/></g>
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".8">
+<circle cx="-9" cy="20" r="4.6"/><circle cx="0" cy="22" r="5.2"/><circle cx="10" cy="20" r="4.4"/><circle cx="-15" cy="12" r="3.6"/><circle cx="14" cy="12" r="3.8"/><circle cx="0" cy="10" r="4"/>
+</g>
+</g>
+<!-- hoja seca de herbario (dorada: paleta cerrada original) -->
+<path id="s-hoja" d="M0 0 Q -30 -8 -44 -34 Q -10 -32 0 0Z" fill="#ecd189" stroke="#a68b3a" stroke-width="1"/>
+<!-- hoja verde oliva aserrada (crisantemo / cempasúchil: verde apagado de herbario) -->
+<g id="s-hoja-verde">
+<path d="M0 0 C -10 -6, -22 -8, -30 -16 L -26 -18 L -34 -24 L -28 -27 L -36 -34 L -29 -36 L -34 -44 C -20 -40, -6 -28, 2 -8 Z"
+  fill="url(#verdeGrad)" stroke="#4a5428" stroke-width="1"/>
+<path d="M0 -2 C -12 -10, -20 -20, -28 -36" fill="none" stroke="#3f4722" stroke-width=".9" opacity=".7"/>
+</g>
+<!-- 8 · CRISANTEMO AMARILLO (fotos 1 y 3: pompom de pétalos finos, centro verde) -->
+<g id="s-crisi">
+<g fill="url(#crisiGrad)" stroke="#a67c2a" stroke-width=".7">
+<g>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(22.5)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(45)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(67.5)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(90)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(112.5)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(135)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(157.5)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(180)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(202.5)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(225)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(247.5)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(270)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(292.5)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(315)"/>
+<path d="M0 -34 C 3.5 -24, 3.5 -12, 0 -2 C -3.5 -12, -3.5 -24, 0 -34Z" transform="rotate(337.5)"/>
+</g>
+<g opacity=".92" transform="rotate(11)">
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(30)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(60)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(90)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(120)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(150)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(180)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(210)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(240)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(270)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(300)"/>
+<path d="M0 -24 C 3 -16, 3 -8, 0 -1 C -3 -8, -3 -16, 0 -24Z" transform="rotate(330)"/>
+</g>
+</g>
+<circle r="9" fill="url(#centroVerde)"/>
+<g fill="#3f4722" opacity=".65"><circle cx="-3" cy="-2" r="1.1"/><circle cx="2.5" cy="-3.5" r="1"/><circle cx="3.5" cy="2" r="1.1"/><circle cx="-2.5" cy="3" r="1"/></g>
+<ellipse cx="-3" cy="-4" rx="3.4" ry="2" fill="#ffe597" opacity=".55"/>
+</g>
+<!-- 9 · CEMPASÚCHIL AMARILLO (foto 2: pompón rizado, cáliz verde) -->
+<g id="s-cempa">
+<path d="M0 22 C -6 26, -10 30, -11 36 L 11 36 C 10 30, 6 26, 0 22Z" fill="url(#verdeGrad)" stroke="#4a5428" stroke-width="1"/>
+<g>
+<ellipse cx="0" cy="4" rx="26" ry="22" fill="url(#cempaGrad)" stroke="#b87416" stroke-width="1"/>
+<ellipse cx="-12" cy="-2" rx="14" ry="12" fill="#ffd34d" stroke="#b87416" stroke-width=".8" opacity=".95"/>
+<ellipse cx="12" cy="-3" rx="13" ry="11" fill="#ffd34d" stroke="#b87416" stroke-width=".8" opacity=".95"/>
+<ellipse cx="0" cy="-8" rx="12" ry="10" fill="#fff0b8" stroke="#b87416" stroke-width=".7" opacity=".95"/>
+</g>
+<g fill="none" stroke="#a85f0e" stroke-width=".9" opacity=".65">
+<path d="M-16 2 C -10 -2, -4 -3, 2 -2 M4 8 C 10 6, 15 4, 18 0 M-8 12 C -4 9, 2 8, 7 9"/>
+</g>
+<ellipse cx="-7" cy="-10" rx="5" ry="3.2" fill="#fff8d2" opacity=".6"/>
+</g>
+<!-- 10 · CEMPASÚCHIL NARANJA (foto 4: acento cálido, mismo lenguaje) -->
+<g id="s-cempa-nar">
+<path d="M0 22 C -6 26, -10 30, -11 36 L 11 36 C 10 30, 6 26, 0 22Z" fill="url(#verdeGrad)" stroke="#4a5428" stroke-width="1"/>
+<g>
+<ellipse cx="0" cy="4" rx="26" ry="22" fill="url(#cempaNar)" stroke="#96500c" stroke-width="1"/>
+<ellipse cx="-12" cy="-2" rx="14" ry="12" fill="#f6a723" stroke="#96500c" stroke-width=".8" opacity=".95"/>
+<ellipse cx="12" cy="-3" rx="13" ry="11" fill="#f6a723" stroke="#96500c" stroke-width=".8" opacity=".95"/>
+<ellipse cx="0" cy="-8" rx="12" ry="10" fill="#ffdf9e" stroke="#96500c" stroke-width=".7" opacity=".95"/>
+</g>
+<g fill="none" stroke="#7c3f08" stroke-width=".9" opacity=".6">
+<path d="M-16 2 C -10 -2, -4 -3, 2 -2 M4 8 C 10 6, 15 4, 18 0 M-8 12 C -4 9, 2 8, 7 9"/>
+</g>
+</g>
+<!-- 11 · CAPULLO / BOTÓN (foto 2: cáliz verde estriado, punta amarilla) -->
+<g id="s-boton">
+<path d="M0 0 C -7 2, -10 8, -9 18 L -5 30 L 5 30 L 9 18 C 10 8, 7 2, 0 0Z" fill="url(#verdeGrad)" stroke="#4a5428" stroke-width="1"/>
+<path d="M-9 18 C -4 20, 4 20, 9 18 M-6 10 C -2 12, 2 12, 6 10" fill="none" stroke="#3f4722" stroke-width=".8" opacity=".7"/>
+<circle cx="0" cy="-2" r="5" fill="url(#crisiGrad)" stroke="#a67c2a" stroke-width=".7"/>
+</g>
+<!-- variantes HD solo para los 7 héroes de la corona (únicas con filtro vivo: 7 instancias, no 60) -->
+<g id="s-crisi-hd"><g filter="url(#acuarela)"><use href="#s-crisi"/></g></g>
+<g id="s-cempa-hd"><g filter="url(#ruff)"><use href="#s-cempa"/></g></g>
+<g id="s-cempa-nar-hd"><g filter="url(#ruff)"><use href="#s-cempa-nar"/></g></g>
+<!-- 12 · FRESIA AMARILLA (foto nueva: trompeta en espiga, garganta anaranjada) -->
+<g id="s-fresia-flor">
+<g fill="url(#fresiaGrad)" stroke="#a86a12" stroke-width=".9">
+<ellipse cx="0" cy="-16" rx="11" ry="16"/>
+<ellipse cx="-14" cy="-6" rx="10" ry="14" transform="rotate(-24 -14 -6)"/>
+<ellipse cx="14" cy="-6" rx="10" ry="14" transform="rotate(24 14 -6)"/>
+<ellipse cx="-11" cy="10" rx="9" ry="12" transform="rotate(-32 -11 10)"/>
+<ellipse cx="11" cy="10" rx="9" ry="12" transform="rotate(32 11 10)"/>
+<ellipse cx="0" cy="13" rx="9" ry="11"/>
+</g>
+<ellipse cx="0" cy="6" rx="7" ry="9" fill="url(#fresiaGarganta)" opacity=".85"/>
+<g fill="none" stroke="#c97a15" stroke-width=".8" opacity=".6">
+<path d="M-8 -12 C -4 -4, -2 4, 0 12 M8 -12 C 4 -4, 2 4, 0 12"/>
+</g>
+<g stroke="#fff8d2" stroke-width="1" opacity=".9">
+<path d="M-3 8 C -5 12, -7 14, -10 16 M0 9 C 0 13, 0 15, 0 18 M3 8 C 5 12, 7 14, 10 16" fill="none" stroke-linecap="round"/>
+</g>
+<g fill="#fff3c8"><circle cx="-10" cy="16" r="1.4"/><circle cx="0" cy="18" r="1.4"/><circle cx="10" cy="16" r="1.4"/></g>
+<ellipse cx="-5" cy="-14" rx="4.5" ry="2.8" fill="#ffffff" opacity=".55"/>
+</g>
+<!-- botón alargado de fresia: vaina verde + punta amarilla -->
+<g id="s-fresia-boton">
+<path d="M0 0 C -5 1, -7 6, -6 14 L -3 26 L 3 26 L 6 14 C 7 6, 5 1, 0 0Z" fill="url(#verdeGrad)" stroke="#4a5428" stroke-width=".9"/>
+<path d="M-6 14 C -2 16, 2 16, 6 14" fill="none" stroke="#3f4722" stroke-width=".7" opacity=".7"/>
+<path d="M0 -6 C 3 -3, 3 0, 0 1 C -3 0, -3 -3, 0 -6Z" fill="url(#fresiaGrad)" stroke="#a86a12" stroke-width=".7"/>
+</g>
+<!-- hoja espada de fresia (verde oliva, cinta larga) -->
+<path id="s-hoja-espada" d="M0 0 C 6 -30, 8 -70, 2 -110 C -4 -70, -6 -30, 0 0Z" fill="url(#verdeGrad)" stroke="#4a5428" stroke-width="1"/>
+<!-- 13 · ESPIGA DE FRESIA (unidad de ramo: tallo arqueado + 5 flores + botones) -->
+<g id="s-fresia-espiga">
+<path d="M0 100 C -4 60, -2 20, 14 -30" fill="none" stroke="url(#verdeTallo)" stroke-width="3" stroke-linecap="round"/>
+<path d="M2 70 C 10 62, 18 58, 28 56 M4 40 C 12 34, 20 30, 30 28 M8 10 C 14 4, 22 0, 30 -2" fill="none" stroke="#4a5428" stroke-width="1.4" opacity=".7" stroke-linecap="round"/>
+<use href="#s-fresia-flor" transform="translate(16 -38) rotate(18) scale(1)"/>
+<use href="#s-fresia-flor" transform="translate(32 -8) rotate(32) scale(.85)"/>
+<use href="#s-fresia-flor" transform="translate(30 24) rotate(40) scale(.72)"/>
+<use href="#s-fresia-flor" transform="translate(2 44) rotate(-14) scale(.66)"/>
+<use href="#s-fresia-flor" transform="translate(-2 72) rotate(-20) scale(.55)"/>
+<use href="#s-fresia-boton" transform="translate(30 -52) rotate(18) scale(.9)"/>
+<use href="#s-fresia-boton" transform="translate(42 -30) rotate(34) scale(.75)"/>
+<use href="#s-fresia-boton" transform="translate(44 -2) rotate(44) scale(.65)"/>
+<use href="#s-hoja-espada" transform="translate(-6 100) rotate(-14) scale(.9)"/>
+</g>
+</defs>
+</svg>
+
+<div class="wash" aria-hidden="true"></div>
+<svg class="grain" aria-hidden="true"><filter id="gg"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#gg)" opacity=".07"/></svg>
+
+<div class="escena">
+
+<!-- ═══ CORONA SUPERIOR: densa, solapada, recorte real (slice) ═══ -->
+<header class="corona" aria-hidden="true">
+<svg viewBox="0 0 1440 300" preserveAspectRatio="xMidYMin slice">
+<!-- fondo pálido difuminado (profundidad, especies de apoyo) -->
+<g class="corona-fondo">
+<use href="#s-crisi" transform="translate(90 84) rotate(-18) scale(1.25)"/>
+<use href="#s-cempa" transform="translate(330 70) rotate(10) scale(1.2)"/>
+<use href="#s-margarita" transform="translate(560 66) rotate(-8) scale(1.2)"/>
+<use href="#s-crisi" transform="translate(790 78) rotate(14) scale(1.3)"/>
+<use href="#s-cempa-nar" transform="translate(1020 72) rotate(-12) scale(1.2)"/>
+<use href="#s-crisi" transform="translate(1240 80) rotate(16) scale(1.3)"/>
+<use href="#s-cempa" transform="translate(1420 90) rotate(20) scale(1.25)"/>
+<use href="#s-rosa" transform="translate(210 60) rotate(20) scale(1.05)"/>
+<use href="#s-gerbera" transform="translate(900 58) rotate(8) scale(1.05)"/>
+<use href="#s-crisi" transform="translate(1140 58) rotate(-16) scale(1.0)"/>
+</g>
+<!-- capa media tupida: crisantemo + cempasúchil protagonistas -->
+<g opacity=".96">
+<use href="#s-cempa" transform="translate(40 170) rotate(-20) scale(.95)"/>
+<use href="#s-crisi" transform="translate(170 190) rotate(14) scale(.9)"/>
+<use href="#s-cempa-nar" transform="translate(300 176) rotate(-28) scale(.85)"/>
+<use href="#s-crisi" transform="translate(430 182) rotate(30) scale(.8)"/>
+<use href="#s-boton" transform="translate(560 190) rotate(-12) scale(.9)"/>
+<use href="#s-crisi" transform="translate(700 178) rotate(8) scale(.95)"/>
+<use href="#s-cempa" transform="translate(840 188) rotate(-14) scale(.92)"/>
+<use href="#s-crisi" transform="translate(975 178) rotate(22) scale(.88)"/>
+<use href="#s-boton" transform="translate(1110 186) rotate(-26) scale(.82)"/>
+<use href="#s-cempa" transform="translate(1245 190) rotate(12) scale(.9)"/>
+<use href="#s-crisi" transform="translate(1380 182) rotate(-18) scale(.92)"/>
+<use href="#s-cempa-nar" transform="translate(1480 170) rotate(20) scale(.9)"/>
+<use href="#s-crisi" transform="translate(-30 168) rotate(-24) scale(.9)"/>
+</g>
+<!-- nube conectora densa entre grandes -->
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".8" opacity=".97">
+<circle cx="105" cy="150" r="5"/><circle cx="122" cy="160" r="4"/><circle cx="238" cy="152" r="5.2"/><circle cx="256" cy="164" r="3.8"/><circle cx="368" cy="150" r="4.6"/><circle cx="386" cy="162" r="4"/><circle cx="498" cy="152" r="5"/><circle cx="516" cy="164" r="3.6"/><circle cx="630" cy="150" r="4.8"/><circle cx="648" cy="162" r="4.2"/><circle cx="770" cy="152" r="5"/><circle cx="788" cy="164" r="3.8"/><circle cx="908" cy="150" r="4.6"/><circle cx="926" cy="162" r="4"/><circle cx="1042" cy="152" r="5"/><circle cx="1060" cy="164" r="3.8"/><circle cx="1178" cy="152" r="4.8"/><circle cx="1196" cy="164" r="4"/><circle cx="1312" cy="152" r="5"/><circle cx="1330" cy="164" r="3.8"/>
+<circle cx="170" cy="228" r="4.4"/><circle cx="352" cy="230" r="4.6"/><circle cx="628" cy="232" r="4.4"/><circle cx="906" cy="230" r="4.6"/><circle cx="1180" cy="232" r="4.4"/>
+</g>
+<!-- sombras de contacto horneadas (estáticas: profundidad sin coste) -->
+<g class="sombra-contacto">
+<ellipse cx="250" cy="250" rx="34" ry="6"/>
+<ellipse cx="500" cy="257" rx="38" ry="6"/>
+<ellipse cx="720" cy="251" rx="32" ry="6"/>
+<ellipse cx="930" cy="258" rx="34" ry="6"/>
+<ellipse cx="1140" cy="253" rx="36" ry="6"/>
+</g>
+<!-- frente nítido con sombra propia -->
+<g class="corona-frente">
+<g class="sway-a"><use href="#s-crisi-hd" transform="translate(250 218) rotate(-10) scale(1.12)"/></g>
+<g class="sway-b"><use href="#s-cempa-hd" transform="translate(500 222) rotate(8) scale(1.18)"/></g>
+<g class="sway-c"><use href="#s-crisi-hd" transform="translate(720 220) rotate(-6) scale(1.05)"/></g>
+<g class="sway-a"><use href="#s-cempa-nar-hd" transform="translate(930 224) rotate(16) scale(1.05)"/></g>
+<g class="sway-b"><use href="#s-crisi-hd" transform="translate(1140 222) rotate(-10) scale(1.12)"/></g>
+<g class="sway-c"><use href="#s-cempa-hd" transform="translate(60 224) rotate(-22) scale(.95)"/></g>
+<g class="sway-a"><use href="#s-crisi-hd" transform="translate(1330 226) rotate(20) scale(1.0)"/></g>
+</g>
+<!-- tallos que se hunden hacia la enredadera: verde oliva + dorado -->
+<g fill="none" stroke-linecap="round">
+<path d="M250 250 C 260 270, 280 285, 310 295 M500 252 C 520 272, 560 285, 600 292 M930 254 C 900 272, 860 285, 820 292" stroke="#a68b3a" stroke-width="2.4" opacity=".7"/>
+<path d="M360 248 C 380 264, 400 276, 424 284 M830 250 C 850 264, 868 276, 890 284" stroke="#4a5428" stroke-width="2.2" opacity=".65"/>
+</g>
+<!-- guirnalda colgante: la corona termina en festón, no en línea recta -->
+<g>
+<g class="sway-soft"><use href="#s-fresia-boton" transform="translate(150 248) rotate(-14) scale(.66)"/></g>
+<g class="sway-soft"><use href="#s-boton" transform="translate(420 254) rotate(10) scale(.68)"/></g>
+<g class="sway-soft"><use href="#s-fresia-boton" transform="translate(640 252) rotate(-8) scale(.64)"/></g>
+<g class="sway-soft"><use href="#s-boton" transform="translate(830 254) rotate(12) scale(.66)"/></g>
+<g class="sway-soft"><use href="#s-fresia-boton" transform="translate(1040 250) rotate(-10) scale(.66)"/></g>
+<g class="sway-soft"><use href="#s-boton" transform="translate(1230 254) rotate(8) scale(.68)"/></g>
+</g>
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".7" opacity=".9">
+<circle cx="200" cy="258" r="3.4"/><circle cx="360" cy="262" r="3.6"/><circle cx="560" cy="260" r="3.4"/><circle cx="740" cy="262" r="3.6"/><circle cx="960" cy="260" r="3.4"/><circle cx="1150" cy="262" r="3.6"/><circle cx="1300" cy="258" r="3.4"/>
+</g>
+<!-- hojas verdes en la base de la corona -->
+<g opacity=".95">
+<use href="#s-hoja-verde" transform="translate(310 250) rotate(24) scale(.9)"/>
+<use href="#s-hoja-verde" transform="translate(880 252) rotate(150) scale(.9)"/>
+<use href="#s-hoja-verde" transform="translate(650 254) rotate(-20) scale(.8)"/>
+</g>
+</svg>
+</header>
+
+<!-- ═══ LATERALES: racimos Poisson, sin filas, recorte contra el borde ═══ -->
+<aside class="borde-lat izq" aria-hidden="true">
+<svg viewBox="0 0 172 1100" preserveAspectRatio="xMidYMid slice">
+<g class="lat-fondo">
+<use href="#s-crisi" transform="translate(80 120) rotate(-20) scale(1.1)"/>
+<use href="#s-cempa" transform="translate(86 420) rotate(14) scale(1.15)"/>
+<use href="#s-crisi" transform="translate(80 720) rotate(-14) scale(1.15)"/>
+<use href="#s-cempa-nar" transform="translate(84 946) rotate(18) scale(1.05)"/>
+</g>
+<g class="lat-media">
+<use href="#s-boton" transform="translate(86 52) rotate(24) scale(.7)"/>
+<use href="#s-fresia-flor" transform="translate(78 252) rotate(-24) scale(.6)"/>
+<use href="#s-cempa" transform="translate(94 318) rotate(18) scale(.62)"/>
+<use href="#s-fresia-espiga" transform="translate(80 540) rotate(-16) scale(.6)"/>
+<use href="#s-crisi" transform="translate(88 610) rotate(-16) scale(.58)"/>
+<use href="#s-fresia-flor" transform="translate(78 830) rotate(-24) scale(.58)"/>
+<use href="#s-boton" transform="translate(88 866) rotate(20) scale(.6)"/>
+</g>
+<g fill="none" stroke-linecap="round">
+<path d="M86 52 C 84 120, 80 180, 78 252 M94 318 C 90 380, 84 460, 80 540 M88 610 C 84 680, 80 756, 78 830 M88 866 C 87 894, 86 922, 84 946" stroke="#4a5428" stroke-width="2.2" opacity=".6"/>
+<path d="M80 470 C 79 520, 79 590, 80 650" stroke="#4a5428" stroke-width="1.6" opacity=".5"/>
+<path d="M84 946 C 83 976, 82 1002, 81 1028" stroke="#4a5428" stroke-width="2" opacity=".6"/>
+</g>
+<g class="lat-frente">
+<g class="sway-b"><use href="#s-cempa" transform="translate(86 180) rotate(-14) scale(.88)"/></g>
+<g class="sway-soft"><use href="#s-fresia-flor" transform="translate(80 322) rotate(-18) scale(.62)"/></g>
+<g class="sway-a"><use href="#s-crisi" transform="translate(86 470) rotate(20) scale(.85)"/></g>
+<g class="sway-c"><use href="#s-fresia-espiga" transform="translate(84 660) rotate(-20) scale(.72)"/></g>
+<g class="sway-b"><use href="#s-crisi" transform="translate(84 770) rotate(-22) scale(.75)"/></g>
+<g class="sway-soft"><use href="#s-cempa" transform="translate(86 872) rotate(14) scale(.6)"/></g>
+<g class="sway-a"><use href="#s-fresia-boton" transform="translate(86 992) rotate(12) scale(.85)"/></g>
+<g class="sway-soft"><use href="#s-fresia-flor" transform="translate(80 1032) rotate(-16) scale(.55)"/></g>
+<g class="sway-soft"><use href="#s-cempa" transform="translate(86 1058) rotate(18) scale(.55)"/></g>
+</g>
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".7" opacity=".95">
+<circle cx="86" cy="228" r="4.4"/><circle cx="98" cy="242" r="3.6"/><circle cx="76" cy="260" r="4"/><circle cx="88" cy="420" r="4.2"/><circle cx="70" cy="420" r="3.8"/><circle cx="90" cy="530" r="4.4"/><circle cx="72" cy="600" r="3.6"/><circle cx="92" cy="712" r="4.2"/><circle cx="72" cy="712" r="3.8"/><circle cx="88" cy="880" r="4.4"/><circle cx="72" cy="906" r="3.6"/>
+<circle cx="76" cy="368" r="3.8"/><circle cx="92" cy="380" r="3.2"/><circle cx="80" cy="822" r="3.6"/><circle cx="94" cy="832" r="3"/>
+<circle cx="74" cy="1000" r="3.6"/><circle cx="88" cy="1012" r="3"/><circle cx="94" cy="1040" r="3.4"/>
+</g>
+<use href="#s-hoja-verde" transform="translate(88 350) rotate(28) scale(.95)"/>
+<use href="#s-hoja-verde" transform="translate(80 590) rotate(200) scale(.85)"/>
+<use href="#s-hoja-verde" transform="translate(88 906) rotate(30) scale(.9)"/>
+<use href="#s-hoja-espada" transform="translate(70 700) rotate(-18) scale(.75)"/>
+<use href="#s-hoja-espada" transform="translate(68 580) rotate(-12) scale(.65)"/>
+<use href="#s-hoja-espada" transform="translate(88 400) rotate(-8) scale(.6)"/>
+<use href="#s-hoja-espada" transform="translate(74 1010) rotate(-24) scale(.7)"/>
+<use href="#s-hoja-verde" transform="translate(94 1030) rotate(40) scale(.75)"/>
+</svg>
+</aside>
+
+<aside class="borde-lat der" aria-hidden="true">
+<svg viewBox="0 0 172 1100" preserveAspectRatio="xMidYMid slice">
+<g class="lat-fondo">
+<use href="#s-cempa" transform="translate(92 100) rotate(18) scale(1.1)"/>
+<use href="#s-crisi" transform="translate(86 400) rotate(-14) scale(1.15)"/>
+<use href="#s-cempa-nar" transform="translate(92 700) rotate(16) scale(1.15)"/>
+<use href="#s-crisi" transform="translate(88 946) rotate(-16) scale(1.05)"/>
+</g>
+<g class="lat-media">
+<use href="#s-boton" transform="translate(86 60) rotate(-24) scale(.68)"/>
+<use href="#s-crisi" transform="translate(94 240) rotate(28) scale(.6)"/>
+<use href="#s-fresia-flor" transform="translate(78 310) rotate(-18) scale(.58)"/>
+<use href="#s-fresia-espiga" transform="translate(92 540) rotate(16) scale(-.6,.6)"/>
+<use href="#s-crisi" transform="translate(84 620) rotate(14) scale(.6)"/>
+<use href="#s-fresia-flor" transform="translate(78 820) rotate(-38) scale(.55)"/>
+<use href="#s-boton" transform="translate(86 866) rotate(-20) scale(.6)"/>
+</g>
+<g fill="none" stroke-linecap="round">
+<path d="M86 60 C 84 120, 80 180, 78 240 M78 310 C 82 380, 88 460, 92 540 M84 620 C 82 690, 80 756, 78 820 M86 866 C 87 894, 88 922, 88 946" stroke="#4a5428" stroke-width="2.2" opacity=".6"/>
+<path d="M92 470 C 93 520, 93 590, 92 650" stroke="#4a5428" stroke-width="1.6" opacity=".5"/>
+<path d="M88 946 C 89 976, 90 1002, 91 1028" stroke="#4a5428" stroke-width="2" opacity=".6"/>
+</g>
+<g class="lat-frente">
+<g class="sway-a"><use href="#s-crisi" transform="translate(86 175) rotate(16) scale(.88)"/></g>
+<g class="sway-soft"><use href="#s-fresia-flor" transform="translate(80 322) rotate(18) scale(.62)"/></g>
+<g class="sway-c"><use href="#s-cempa" transform="translate(86 465) rotate(12) scale(.88)"/></g>
+<g class="sway-b"><use href="#s-fresia-espiga" transform="translate(88 655) rotate(20) scale(-.72,.72)"/></g>
+<g class="sway-a"><use href="#s-cempa-nar" transform="translate(86 775) rotate(-18) scale(.82)"/></g>
+<g class="sway-soft"><use href="#s-crisi" transform="translate(86 872) rotate(-14) scale(.6)"/></g>
+<g class="sway-c"><use href="#s-fresia-boton" transform="translate(86 992) rotate(-12) scale(.85)"/></g>
+<g class="sway-soft"><use href="#s-fresia-flor" transform="translate(82 1032) rotate(16) scale(-.55,.55)"/></g>
+<g class="sway-soft"><use href="#s-cempa" transform="translate(86 1058) rotate(-18) scale(.55)"/></g>
+</g>
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".7" opacity=".95">
+<circle cx="86" cy="226" r="4.2"/><circle cx="98" cy="240" r="3.6"/><circle cx="74" cy="258" r="4"/><circle cx="88" cy="418" r="4.4"/><circle cx="70" cy="418" r="3.6"/><circle cx="90" cy="528" r="4.2"/><circle cx="72" cy="600" r="3.8"/><circle cx="92" cy="710" r="4.4"/><circle cx="72" cy="710" r="3.6"/><circle cx="88" cy="878" r="4.2"/><circle cx="72" cy="906" r="3.8"/>
+<circle cx="94" cy="368" r="3.8"/><circle cx="78" cy="380" r="3.2"/><circle cx="90" cy="822" r="3.6"/><circle cx="76" cy="832" r="3"/>
+<circle cx="78" cy="1000" r="3.6"/><circle cx="92" cy="1012" r="3"/><circle cx="96" cy="1040" r="3.4"/>
+</g>
+<use href="#s-hoja-verde" transform="translate(88 350) rotate(150) scale(.95)"/>
+<use href="#s-hoja-verde" transform="translate(82 590) rotate(-30) scale(.85)"/>
+<use href="#s-hoja-verde" transform="translate(88 906) rotate(150) scale(.9)"/>
+<use href="#s-hoja-espada" transform="translate(102 700) rotate(18) scale(-.75,.75)"/>
+<use href="#s-hoja-espada" transform="translate(100 580) rotate(12) scale(-.65,.65)"/>
+<use href="#s-hoja-espada" transform="translate(86 400) rotate(8) scale(-.6,.6)"/>
+<use href="#s-hoja-espada" transform="translate(98 1010) rotate(24) scale(-.7,.7)"/>
+<use href="#s-hoja-verde" transform="translate(78 1030) rotate(-40) scale(-.75,.75)"/>
+</svg>
+</aside>
+
+<main class="page">
+<!-- ═══ ENREDADERA CENTRAL: tallo en S por el lateral derecho del texto → carta ═══ -->
+<div class="liana" aria-hidden="true">
+<svg viewBox="0 0 640 680">
+<!-- tallo principal: curva suave a la derecha del titular, nunca sobre las letras -->
+<path d="M310 0 C 340 90, 460 150, 440 260 S 400 420, 440 520 S 460 600, 474 640"
+  fill="none" stroke="url(#verdeTallo)" stroke-width="3.2" stroke-linecap="round" opacity=".85"/>
+<path d="M440 260 C 424 286, 406 304, 386 314 M440 520 C 458 536, 468 552, 472 574 M350 110 C 372 124, 392 132, 412 136"
+  fill="none" stroke="#4a5428" stroke-width="1.5" opacity=".6" stroke-linecap="round"/>
+<!-- hojas verdes intercaladas, siempre al margen -->
+<use href="#s-hoja-verde" transform="translate(400 180) rotate(24) scale(.95)"/>
+<use href="#s-hoja-verde" transform="translate(452 320) rotate(140) scale(.9)"/>
+<use href="#s-hoja-verde" transform="translate(418 450) rotate(28) scale(.95)"/>
+<use href="#s-hoja-verde" transform="translate(452 560) rotate(150) scale(.85)"/>
+<!-- flores pequeñas intercaladas + puente hacia la carta, fuera del eje de lectura -->
+<g>
+<g class="sway-b"><use href="#s-crisi" transform="translate(412 136) rotate(18) scale(.48)"/></g>
+<g class="sway-a"><use href="#s-boton" transform="translate(386 314) rotate(-26) scale(.5)"/></g>
+<g class="sway-c"><use href="#s-cempa" transform="translate(472 574) rotate(20) scale(.46)"/></g>
+<g class="sway-b"><use href="#s-crisi" transform="translate(420 480) rotate(-14) scale(.42)"/></g>
+<g class="sway-a"><use href="#s-fresia-flor" transform="translate(452 532) rotate(16) scale(.5)"/></g>
+<g class="sway-c"><use href="#s-fresia-boton" transform="translate(392 428) rotate(-18) scale(.55)"/></g>
+</g>
+<!-- nube: tejido conector, escasa en el centro -->
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".7" opacity=".92">
+<circle cx="410" cy="210" r="3.8"/><circle cx="426" cy="220" r="3.2"/>
+<circle cx="428" cy="370" r="3.8"/><circle cx="444" cy="380" r="3.2"/>
+<circle cx="432" cy="512" r="4"/><circle cx="448" cy="522" r="3.4"/>
+<circle cx="458" cy="612" r="4.2"/><circle cx="474" cy="620" r="3.4"/>
+<circle cx="404" cy="452" r="3.6"/><circle cx="464" cy="556" r="3.4"/>
+</g>
+<!-- anotación única, pegada al tallo -->
+<text class="anot" x="462" y="242" transform="rotate(10 462 242)">nube</text>
+</svg>
+</div>
+
+<div class="nucleo">
+<!-- fecha integrada a la escena, escrita a mano junto al ramillete -->
+<div class="fecha-scene" aria-label="Feliz día, al sol que ilumina mis días">
+<svg width="88" height="64" viewBox="0 0 88 64" aria-hidden="true">
+<path d="M44 60 C 39 42, 31 30, 19 20 M44 60 C 49 42, 57 32, 69 24" stroke="url(#verdeTallo)" stroke-width="2" fill="none" stroke-linecap="round"/>
+<g class="sway-a">
+<g transform="translate(19 18)"><use href="#s-crisi" transform="scale(.5)"/></g>
+<g transform="translate(69 22) scale(.55)"><use href="#s-cempa"/></g>
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".6"><circle cx="37" cy="38" r="3.2"/><circle cx="43" cy="34" r="2.6"/><circle cx="49" cy="39" r="3"/></g>
+</g>
+</svg>
+<div class="fecha-mano">Feliz día<small>Al sol que ilumina mis días</small></div>
+</div>
+
+<h1>Mi Sol, Mi Cielo, Mi Vida,<br><span class="luz">gracias por iluminar mi vida</span></h1>
+<p class="sub">Sepas que todo esto, pensando en ti, solo fue para <strong>sacarte una sonrisa</strong>, incluso hoy, a la distancia, mi bien más preciado, esa sonrisa hermosa que me derrite e ilumina mis días.</p>
+
+<div class="rule" aria-hidden="true">❦</div>
+</div><!-- /nucleo -->
+
+<!-- ═══ CARTA ═══ -->
+<section class="carta-zone" aria-label="Carta para regalar">
+<!-- abrazo de fresias: espigas amarillas que desbordan la carta por los 4 lados -->
+<div class="abrazo-fresia" aria-hidden="true">
+<svg viewBox="0 0 900 780" preserveAspectRatio="xMidYMid meet">
+<!-- fondo pálido difuminado -->
+<g class="abrazo-fondo">
+<use href="#s-fresia-espiga" transform="translate(170 220) rotate(-28) scale(1.1)"/>
+<use href="#s-crisi" transform="translate(730 240) rotate(20) scale(1.15)"/>
+<use href="#s-cempa" transform="translate(180 560) rotate(-18) scale(1.1)"/>
+<use href="#s-fresia-espiga" transform="translate(740 540) rotate(28) scale(-1.1,1.1)"/>
+<use href="#s-crisi" transform="translate(450 656) rotate(180) scale(.9)"/>
+</g>
+<!-- tallos largos que abrazan por detrás -->
+<g fill="none" stroke-linecap="round">
+<path d="M170 220 C 220 300, 240 420, 200 560 M730 240 C 690 320, 672 440, 710 560 M310 646 C 390 622, 510 622, 596 646" stroke="#4a5428" stroke-width="2.6" opacity=".55"/>
+<path d="M250 180 C 320 220, 380 240, 450 250 M650 180 C 590 215, 530 235, 470 248" stroke="#a68b3a" stroke-width="2.2" opacity=".55"/>
+</g>
+<!-- capa media: relleno + botones -->
+<g class="abrazo-media">
+<use href="#s-cempa" transform="translate(250 150) rotate(-16) scale(.8)"/>
+<use href="#s-crisi" transform="translate(660 150) rotate(18) scale(.82)"/>
+<use href="#s-fresia-boton" transform="translate(110 360) rotate(-50) scale(.9)"/>
+<use href="#s-fresia-boton" transform="translate(790 360) rotate(50) scale(.9)"/>
+<use href="#s-boton" transform="translate(248 622) rotate(160) scale(.75)"/>
+<use href="#s-boton" transform="translate(652 622) rotate(200) scale(.75)"/>
+<use href="#s-hoja-espada" transform="translate(150 600) rotate(-24) scale(1)"/>
+<use href="#s-hoja-espada" transform="translate(750 600) rotate(24) scale(-1,1)"/>
+<use href="#s-hoja-verde" transform="translate(230 200) rotate(-30) scale(.9)"/>
+<use href="#s-hoja-verde" transform="translate(670 200) rotate(30) scale(-.9,.9)"/>
+</g>
+<!-- nube conectora -->
+<g fill="#fffdf2" stroke="#b89a3e" stroke-width=".7" opacity=".94">
+<circle cx="230" cy="280" r="4.2"/><circle cx="248" cy="292" r="3.4"/><circle cx="214" cy="300" r="3.8"/>
+<circle cx="670" cy="280" r="4.2"/><circle cx="688" cy="292" r="3.4"/><circle cx="654" cy="300" r="3.8"/>
+<circle cx="220" cy="480" r="4"/><circle cx="240" cy="492" r="3.4"/>
+<circle cx="680" cy="480" r="4"/><circle cx="660" cy="492" r="3.4"/>
+<circle cx="368" cy="632" r="4"/><circle cx="532" cy="632" r="4"/>
+</g>
+<!-- frente nítido: 6 espigas laterales + base natural (flores apoyadas, tallos hacia arriba) -->
+<g class="abrazo-frente">
+<g class="sway-a"><use href="#s-fresia-espiga" transform="translate(148 208) rotate(-30) scale(1.12)"/></g>
+<g class="sway-b"><use href="#s-fresia-espiga" transform="translate(752 200) rotate(26) scale(-1.15,1.15)"/></g>
+<g class="sway-c"><use href="#s-fresia-espiga" transform="translate(96 372) rotate(-58) scale(1.02)"/></g>
+<g class="sway-a"><use href="#s-fresia-espiga" transform="translate(804 372) rotate(58) scale(-1.02,1.02)"/></g>
+<g class="sway-b"><use href="#s-fresia-espiga" transform="translate(132 566) rotate(-32) scale(1.06)"/></g>
+<g class="sway-c"><use href="#s-fresia-espiga" transform="translate(768 566) rotate(32) scale(-1.06,1.06)"/></g>
+<g class="sway-a"><use href="#s-fresia-flor" transform="translate(322 648) rotate(-18) scale(.85)"/></g>
+<g class="sway-b"><use href="#s-fresia-flor" transform="translate(578 648) rotate(18) scale(-.85,.85)"/></g>
+<g class="sway-c"><use href="#s-fresia-boton" transform="translate(372 656) rotate(-12) scale(.8)"/></g>
+<g class="sway-a"><use href="#s-fresia-boton" transform="translate(528 656) rotate(12) scale(-.8,.8)"/></g>
+</g>
+<!-- toques de crisantemo entre fresias -->
+<g class="abrazo-frente">
+<g class="sway-c"><use href="#s-crisi" transform="translate(196 148) rotate(-14) scale(.8)"/></g>
+<g class="sway-a"><use href="#s-crisi" transform="translate(706 148) rotate(14) scale(.8)"/></g>
+<g class="sway-b"><use href="#s-cempa-nar" transform="translate(120 470) rotate(-20) scale(.7)"/></g>
+<g class="sway-c"><use href="#s-cempa-nar" transform="translate(782 470) rotate(20) scale(.7)"/></g>
+</g>
+</svg>
+</div>
+<article class="carta">
+<div class="cinta" aria-hidden="true"></div>
+<svg class="prensada" viewBox="0 0 76 76" aria-hidden="true">
+<g transform="translate(38 32) rotate(14)"><use href="#s-crisi" transform="scale(.62)"/></g>
+<use href="#s-hoja-verde" transform="translate(52 50) rotate(30) scale(.5)"/>
+<path d="M38 54 C 38 61, 37 66, 35 72" stroke="#4a5428" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+</svg>
+
+<!-- REEMPLAZO POSTERIOR — slot habitado de la carta.
+     Para personalizar automáticamente, sustituir el innerHTML de #letterSlot.
+     Se mantiene habitado por defecto (empieza con "Querido/a,"). -->
+<div id="letterSlot" contenteditable="true" spellcheck="true" aria-label="Carta editable. Toca y escribe tu mensaje aquí.">
+<p>Mi Caramelito,</p>
+<p>Enamorado de la idea, en hacerte homenaje, a ti, a nosotros, a nuestro jardín y llenarlo un día, quería que esto permaneciese para ti.</p>
+<p>Sepas un año más, aprovechar el día, así, haciéndote saber que aquella complicidad que me hace sonreír incluso sin saberlo durante los días, me acompaña hasta hoy, como ayer, como mañana.</p>
+<p>Me impulsa a hacerte, mi vida, a querer ofrecerte, mi vida, todas las flores del mundo, insuficientes para tu belleza, insuficiente para ti, mi sol.</p>
+<p>Que con tu presencia llenas mi vida, de la cálida sensación del sol, de la dulzura del viento tocando mi piel con tu voz, de tu sonrisa, sobre todo, de esos ojos hermosos, que hacen que mi cuerpo se convierta en puro sol, pura vida, pura alegría.</p>
+<p>En honor a todos nuestros recuerdos, los más cálidos, los más hermosos,</p>
+<p>Te amo, mi vida, con la fuerza de mil soles.</p>
+<p class="firma">Abrahans, tu señor besito</p>
+</div>
+
+</article>
+</section>
+
+<p class="nota">Que la vida nos ponga en los momentos necesarios, en los días exactos para decirte con todo mi amor, con toda mi alegría, con toda tu sonrisa, <span class="verso">que te amo, que eres mi sol, mi vida.</span></p>
+
+</main>
+</div><!-- /escena -->
+
+<script>
+(function(){
+  var slot = document.getElementById('letterSlot');
+  try{
+    var saved = localStorage.getItem('herbario-carta-21sep-v2');
+    if(saved && saved.replace(/<[^>]*>/g,'').trim().length > 10){ slot.innerHTML = saved; }
+  }catch(e){}
+  var t;
+  slot.addEventListener('input', function(){
+    clearTimeout(t);
+    t = setTimeout(function(){
+      try{ localStorage.setItem('herbario-carta-21sep-v2', slot.innerHTML); }catch(e){}
+    }, 500);
+  });
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Desfase orgánico: cada flor respira en su propio tiempo (sin sincronía robótica)
+  // El fondo va más lento: menos repintados + más elegancia = 60fps estables
+  if(!reduce){
+    var swayers = document.querySelectorAll('.sway-a,.sway-b,.sway-c,.sway-soft');
+    for(var s=0;s<swayers.length;s++){
+      var el = swayers[s];
+      var deep = el.closest && el.closest('.corona-fondo,.lat-fondo,.abrazo-fondo');
+      var soft = deep || (el.classList && el.classList.contains('sway-soft'));
+      el.style.animationDelay = (-Math.random()*(soft?14:9)).toFixed(2) + 's';
+      el.style.animationDuration = soft
+        ? (10 + Math.random()*4).toFixed(2) + 's'
+        : (5.6 + Math.random()*2.6).toFixed(2) + 's';
+    }
+    // Paralaje sutil: la corona flota y los laterales acompañan a ritmos distintos
+    var corona = document.querySelector('.corona'),
+        latIzq = document.querySelector('.borde-lat.izq'),
+        latDer = document.querySelector('.borde-lat.der'),
+        ticking = false;
+    function parallax(){
+      ticking = false;
+      var y = window.scrollY || 0;
+      if(corona){ corona.style.transform = 'translate3d(0,' + (y*0.08).toFixed(1) + 'px,0)'; }
+      if(latIzq){ latIzq.style.transform = 'translate3d(0,' + (y*0.04).toFixed(1) + 'px,0)'; }
+      if(latDer){ latDer.style.transform = 'translate3d(0,' + (y*0.04).toFixed(1) + 'px,0)'; }
+    }
+    window.addEventListener('scroll', function(){
+      if(!ticking){ ticking = true; requestAnimationFrame(parallax); }
+    }, {passive:true});
+  }
+  if(!reduce){
+    var colors = ['#f6da93','#ffe4a6','#ffe597','#dabb59','#f9c93c','#9aa65e'];
+    for(var i=0;i<9;i++){
+      (function(i){
+        var p = document.createElement('div');
+        p.className = 'petalo-caido';
+        var s = 9 + Math.random()*11;
+        p.style.left = (3 + Math.random()*94) + 'vw';
+        p.style.width = s + 'px'; p.style.height = (s*0.72) + 'px';
+        p.style.background = colors[i % colors.length];
+        p.style.border = '1px solid rgba(218,187,89,.6)';
+        p.style.borderRadius = '62% 8% 62% 8% / 58% 10% 58% 10%';
+        p.style.setProperty('--dx', ((Math.random()*8)-4).toFixed(1) + 'vw');
+        p.style.animationDuration = (10 + Math.random()*9) + 's';
+        p.style.animationDelay = (-Math.random()*16) + 's';
+        document.body.appendChild(p);
+      })(i);
+    }
+  }
+})();
+</script>
+</body>
+</html>
